@@ -1,22 +1,35 @@
 package com.example.identity_service.exception;
 
 import com.example.identity_service.dto.request.ApiResponse;
+import jakarta.validation.ConstraintViolation;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+
 @ControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
+    private static final String MIN_ATTRIBUTE = "min";
+
     @ExceptionHandler(value = Exception.class)
-    ResponseEntity<ApiResponse> handlingException(Exception exception) {
+    ResponseEntity<ApiResponse> handlingRuntimeException(RuntimeException exception) {
+        log.error("Exception: ", exception);
         ApiResponse apiResponse = new ApiResponse();
 
-        apiResponse.setCode(999);
-        apiResponse.setMessage(exception.getMessage());
+        apiResponse.setCode(ErrorCode.UNCATEGORIZED_EXCEPTION.getCode());
+        apiResponse.setMessage(ErrorCode.UNCATEGORIZED_EXCEPTION.getMessagge());
 
-        return ResponseEntity.badRequest().body(apiResponse);
+        return ResponseEntity
+                .status(ErrorCode.UNCATEGORIZED_EXCEPTION.getStatusCode())
+                .body(apiResponse);
     }
 
 
@@ -28,19 +41,53 @@ public class GlobalExceptionHandler {
         apiResponse.setCode(errorCode.getCode());
         apiResponse.setMessage(errorCode.getMessagge());
 
-        return ResponseEntity.badRequest().body(apiResponse);
+        return ResponseEntity
+                .status(errorCode.getStatusCode())
+                .body(apiResponse);
+    }
+
+    @ExceptionHandler(value = AccessDeniedException.class)
+    ResponseEntity<ApiResponse> handlerAccessDeniedException(AccessDeniedException exception) {
+        ErrorCode errorCode = ErrorCode.UNAUTHORIZED;
+        return ResponseEntity.status(errorCode.getStatusCode()).body(
+                ApiResponse.builder()
+                        .code(errorCode.getCode())
+                        .message(errorCode.getMessagge())
+                        .build()
+        );
     }
 
     @ExceptionHandler(value = MethodArgumentNotValidException.class)
     ResponseEntity<ApiResponse> handlerMethodArgumentNotValidException(MethodArgumentNotValidException exception) {
         String enumKey = exception.getFieldError().getDefaultMessage();
-        ErrorCode errorCode = ErrorCode.valueOf(enumKey);
         ApiResponse apiResponse = new ApiResponse();
 
-        apiResponse.setCode(errorCode.getCode());
-        apiResponse.setMessage(errorCode.getMessagge());
+        ErrorCode errorCode = ErrorCode.INVALID_KEY;
 
-        return ResponseEntity.badRequest().body(apiResponse);
+        Map<String, Object> attributes = new HashMap<>();
+
+        try {
+            errorCode = ErrorCode.valueOf(enumKey);
+            var constraintViolation = exception.getBindingResult()
+                    .getAllErrors().getFirst().unwrap(ConstraintViolation.class);
+
+            attributes = constraintViolation.getConstraintDescriptor().getAttributes();
+            log.info(attributes.toString());
+        } catch (IllegalArgumentException e) {
+
+        }
+
+        apiResponse.setCode(errorCode.getCode());
+        apiResponse.setMessage(Objects.nonNull(attributes) ?
+                 mapAttribute(errorCode.getMessagge(), attributes)
+                : errorCode.getMessagge());
+
+        return ResponseEntity.status(errorCode.getStatusCode()).body(apiResponse);
+    }
+
+    private String mapAttribute(String message, Map<String, Object> attributes) {
+        String minValue = String.valueOf(attributes.get(MIN_ATTRIBUTE));
+        return message.replace("{" + MIN_ATTRIBUTE + "}", minValue);
     }
 }
 
