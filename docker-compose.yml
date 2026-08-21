@@ -1,0 +1,25 @@
+services:
+  db:
+    image: mysql:8.4
+    container_name: mysql-identity
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: identity_service
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      DBMS_CONNECTION: jdbc:mysql://db:3306/identity_service
+      DBMS_USERNAME: root
+      DBMS_PASSWORD: root
+    depends_on:
+      - db
+
+volumes:
+  mysql-data:

@@ -2,7 +2,6 @@ package com.example.identity_service.validator;
 
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
-
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
@@ -27,4 +26,3 @@ public class DayOfBirthValidator implements ConstraintValidator<DayOfBirthConstr
         return years >= min;
     }
 }
-

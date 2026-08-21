@@ -4,13 +4,12 @@ import com.example.identity_service.dto.request.ApiResponse;
 import com.example.identity_service.dto.request.RoleRequest;
 import com.example.identity_service.dto.response.RoleResponse;
 import com.example.identity_service.service.RoleService;
+import java.util.List;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/roles")
